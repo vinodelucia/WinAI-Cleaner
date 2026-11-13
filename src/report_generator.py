@@ -1,7 +1,9 @@
 import os
 import webbrowser
 from datetime import datetime
-from jinja2 import Template
+from pathlib import Path
+from jinja2 import Environment
+from src import __version__
 
 HTML_TEMPLATE = """
 <!DOCTYPE html>
@@ -25,6 +27,7 @@ HTML_TEMPLATE = """
         th, td { text-align: left; padding: 14px; border-bottom: 1px solid #334155; }
         th { color: #38bdf8; font-size: 13px; text-transform: uppercase; }
         .explanation { color: #cbd5e1; font-size: 13px; margin-top: 4px; }
+        .reasons { color: #94a3b8; font-size: 12px; margin-top: 4px; }
         .badge { background: #0284c7; color: white; padding: 3px 8px; border-radius: 6px; font-size: 11px; }
         .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #64748b; }
     </style>
@@ -44,7 +47,7 @@ HTML_TEMPLATE = """
             <span class="mode-badge mode-real">LIMPEZA REAL CONCLUÍDA</span>
             {% endif %}
         </div>
-        
+
         <div class="summary">
             <div class="card">
                 <h2>{{ report.total_freed_mb }} MB</h2>
@@ -54,9 +57,15 @@ HTML_TEMPLATE = """
                 <h2>{{ report.deleted_files_count }}</h2>
                 <p>{% if report.dry_run %}Arquivos Elegíveis para Remoção{% else %}Arquivos Temporários Removidos{% endif %}</p>
             </div>
+            {% if report.quarantined_count %}
+            <div class="card">
+                <h2 style="color: #eab308;">{{ report.quarantined_count }}</h2>
+                <p>Em Quarentena 7d ({{ report.total_quarantined_mb }} MB)</p>
+            </div>
+            {% endif %}
             <div class="card">
                 <h2>{{ report.skipped_locked_count }}</h2>
-                <p>Arquivos Preservados (Em Uso Ativo)</p>
+                <p>Arquivos Preservados (Em Uso / Protegidos)</p>
             </div>
         </div>
 
@@ -73,11 +82,21 @@ HTML_TEMPLATE = """
                 {% for item in report.details %}
                 <tr>
                     <td>
-                        <strong>{{ item.category }}</strong><br>
+                        <strong>{{ item.category }}</strong>{% if item.risk == "REVIEW" %} <span class="badge" style="background:#ca8a04;">REVISAR</span>{% endif %}<br>
                         <small style="color:#64748b;">{{ item.path }}</small>
                     </td>
                     <td><strong>{{ item.freed_mb }} MB</strong></td>
-                    <td>{{ item.deleted_count }} arq. ({{ item.skipped_count }} em uso)</td>
+                    <td>
+                        {{ item.deleted_count }} arq. ({{ item.skipped_count }} preservados)
+                        {% if item.quarantined_count %}<br><small style="color:#eab308;">{{ item.quarantined_count }} arq. em quarentena por 7 dias ({{ item.quarantined_mb }} MB)</small>{% endif %}
+                        {% if item.skip_reasons %}
+                        <div class="reasons">
+                            {% for reason, count in item.skip_reasons.items() %}
+                            • {{ reason }}: {{ count }}<br>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
                     <td>
                         <span class="badge">{{ item.ai_engine }}</span>
                         <div class="explanation">{{ item.ai_explanation }}</div>
@@ -88,12 +107,15 @@ HTML_TEMPLATE = """
         </table>
 
         <div class="footer">
-            Gerado por WinAI-Cleaner v2.0 (Open-Source Run-and-Done Utility). Zero processos residentes em segundo plano.
+            Gerado por WinAI-Cleaner v{{ version }} (Open-Source Run-and-Done Utility). Zero processos residentes em segundo plano.
         </div>
     </div>
 </body>
 </html>
 """
+
+_JINJA_ENV = Environment(autoescape=True)
+
 
 def generate_html_report(cleanup_data: dict, profile_name: str = "Geral (Completo)", open_browser: bool = True) -> str:
     os.makedirs("reports", exist_ok=True)
@@ -102,17 +124,18 @@ def generate_html_report(cleanup_data: dict, profile_name: str = "Geral (Complet
     prefix = "simulacao" if cleanup_data.get("dry_run") else "limpeza"
     filepath = os.path.abspath(os.path.join("reports", f"relatorio_{prefix}_{file_stamp}.html"))
 
-    template = Template(HTML_TEMPLATE)
+    template = _JINJA_ENV.from_string(HTML_TEMPLATE)
     html_content = template.render(
         report=cleanup_data,
         timestamp=timestamp_str,
-        profile_name=profile_name
+        profile_name=profile_name,
+        version=__version__,
     )
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
 
     if open_browser:
-        webbrowser.open(f"file://{filepath}")
+        webbrowser.open(Path(filepath).as_uri())
 
     return filepath

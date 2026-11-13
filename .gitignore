@@ -13,8 +13,13 @@ build/
 dist/
 *.spec
 
-# Relatórios gerados localmente
+# Relatórios e logs gerados localmente
 reports/*.html
+reports/*.log
+
+# Testes e cobertura
+.pytest_cache/
+.coverage
 
 # IDEs
 .vscode/

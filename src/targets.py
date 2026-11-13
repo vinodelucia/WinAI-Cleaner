@@ -8,6 +8,9 @@ PROFILES = [
     "Básico do Sistema"
 ]
 
+TEMP_EXCLUDE_EXTENSIONS = [".lock", ".lck", ".pid"]
+
+
 def get_cleanup_targets():
     """
     Mapeamento de diretórios seguros de cache e arquivos temporários do Windows,
@@ -22,28 +25,35 @@ def get_cleanup_targets():
         {
             "category": "Temporários do Usuário",
             "path": temp_dir,
-            "description": "Arquivos temporários gerados por aplicativos em uso diário.",
+            "description": "Arquivos temporários gerados por aplicativos em uso diário (apenas com mais de 1 dia).",
+            "min_age_days": 1,
+            "exclude_extensions": TEMP_EXCLUDE_EXTENSIONS,
             "risk": "SAFE",
             "profiles": ["Geral (Completo)", "Modo Gamer", "Edição de Vídeo", "Básico do Sistema"]
         },
         {
             "category": "Temporários do Sistema (Windows)",
             "path": os.path.join(win_dir, "Temp"),
-            "description": "Caches temporários de serviços internos do sistema operacional.",
+            "description": "Caches temporários de serviços internos do sistema operacional (apenas com mais de 1 dia).",
+            "min_age_days": 1,
+            "exclude_extensions": TEMP_EXCLUDE_EXTENSIONS,
             "risk": "SAFE",
             "profiles": ["Geral (Completo)", "Básico do Sistema"]
         },
         {
             "category": "Windows Prefetch",
             "path": os.path.join(win_dir, "Prefetch"),
-            "description": "Índices antigos de pré-carregamento de aplicativos e jogos.",
+            "description": "Índices antigos de pré-carregamento de aplicativos sem uso há mais de 7 dias.",
+            "min_age_days": 7,
             "risk": "SAFE",
             "profiles": ["Geral (Completo)", "Modo Gamer", "Básico do Sistema"]
         },
         {
             "category": "Cache do Windows Update",
             "path": os.path.join(win_dir, "SoftwareDistribution", "Download"),
-            "description": "Instaladores de atualizações do Windows já concluídas.",
+            "description": "Instaladores de atualizações do Windows já concluídas. Ignorado automaticamente se o serviço wuauserv estiver ativo.",
+            "min_age_days": 1,
+            "active_service": "wuauserv",
             "risk": "SAFE",
             "profiles": ["Geral (Completo)", "Básico do Sistema"]
         },
@@ -87,7 +97,6 @@ def get_cleanup_targets():
             "path": os.path.join(local_app_data, "Microsoft", "Windows", "Explorer"),
             "description": "Caches de miniaturas antigas do Windows Explorer (arquivos thumbcache).",
             "risk": "SAFE",
-            " filter_prefix": "thumbcache_",
             "filter_prefix": "thumbcache_",
             "profiles": ["Geral (Completo)", "Edição de Vídeo", "Básico do Sistema"]
         }

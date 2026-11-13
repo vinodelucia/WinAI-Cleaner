@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ WinAI-Cleaner v2.0
+# ✨ WinAI-Cleaner v2.1
 ### *Run-and-Done Intelligent Windows Cache & Temp Cleaner*
 **Utilitário Open-Source ultraleve para limpeza auditada de caches e arquivos temporários no Windows 10/11.**
 
@@ -81,6 +81,13 @@ pip install -r requirements.txt
 python main.py
 ```
 
+### 🔒 Camadas de Segurança (v2.1)
+* Categorias de risco **REVIEW** (Crash Dumps, Adobe Media Cache Database) vêm desmarcadas e são movidas para uma **quarentena de 7 dias** em vez de apagadas.
+* Arquivos recentes (< 1 dia) em Temp são preservados; links simbólicos/junctions nunca são seguidos.
+* Cada arquivo é **revalidado imediatamente antes** de ser removido (tamanho, tipo e diretório alvo).
+* O LLM recebe apenas metadados (nunca conteúdo de arquivos) e sua resposta é validada por schema.
+* Log de auditoria em `reports/winai.log`. Hash SHA-256 publicado em cada Release.
+
 ### 🧪 Testes Automatizados (CI/CD Quality Gate)
 O projeto conta com uma suíte de testes unitários em `pytest` que valida a varredura, filtros de segurança, proteção de arquivos em uso e garante que o **Modo Dry-Run** jamais remova arquivos reais:
 ```bash
@@ -137,13 +144,15 @@ WinAI-Cleaner/
 ├── reports/                # Relatórios HTML de auditoria gerados localmente
 ├── src/
 │   ├── icon_helper.py      # Gerador de ícone .ico multi-resolução (Pillow)
+│   ├── logger.py           # Logging auditável em arquivo (reports/winai.log)
 │   ├── targets.py          # Mapeamento de diretórios e perfis de uso
 │   ├── ai_engine.py        # Motor híbrido (Ollama Local + Fallback Heurístico)
-│   ├── scanner.py          # Varredura, verificação de CPU, Dry-Run e remoção segura
-│   ├── report_generator.py # Renderizador de relatórios HTML (Jinja2)
+│   ├── scanner.py          # Varredura, verificação de CPU, Dry-Run, quarentena e remoção segura
+│   ├── report_generator.py # Renderizador de relatórios HTML com autoescape (Jinja2)
 │   └── ui.py               # Interface gráfica moderna em modo escuro (CustomTkinter)
 ├── tests/
-│   └── test_scanner.py     # Testes unitários isolados com Pytest e tmp_path
+│   ├── test_scanner.py     # Testes principais do scanner e relatórios
+│   └── test_safety.py      # Testes de segurança, quarentena, revalidação e schema da IA
 ├── main.py                 # Ponto de entrada e elevação UAC (Administrador)
 └── requirements.txt        # Dependências enxutas do projeto
 ```
